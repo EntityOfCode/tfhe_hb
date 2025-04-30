@@ -38,3 +38,8 @@ cache-*
 
 cu/
 mkdocs-site/
+
+# TFHE NIF test files
+test/eoc_tfhe/keys/
+test/eoc_tfhe/data/
+test/eoc_tfhe/perf_results/

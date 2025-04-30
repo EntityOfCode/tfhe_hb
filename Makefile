@@ -74,8 +74,38 @@ $(WAMR_DIR)/lib/libvmlib.a: $(WAMR_DIR)
         -DWAMR_BUILD_DUMP_CALL_STACK=1
 	make -C $(WAMR_DIR)/lib -j8
 
+# TFHE library configuration
+TFHE_VERSION = v1.0.1
+TFHE_DIR = _build/tfhe
+TFHE_BUILD_DIR = $(TFHE_DIR)/build
+
+tfhe: $(TFHE_BUILD_DIR)/libtfhe/libtfhe-nayuki-portable.a
+
+# Clone the TFHE repository
+$(TFHE_DIR):
+	git clone \
+		https://github.com/tfhe/tfhe.git \
+		$(TFHE_DIR) \
+		-b $(TFHE_VERSION) \
+		--single-branch
+
+# Build the TFHE library with all FFT processors
+$(TFHE_BUILD_DIR)/libtfhe/libtfhe-nayuki-portable.a: $(TFHE_DIR)
+	mkdir -p $(TFHE_BUILD_DIR)
+	cd $(TFHE_BUILD_DIR) && cmake ../src \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DENABLE_TESTS=OFF \
+		-DENABLE_FFTW=OFF \
+		-DENABLE_NAYUKI_PORTABLE=ON \
+		-DENABLE_NAYUKI_AVX=ON \
+		-DENABLE_SPQLIOS_AVX=ON \
+		-DENABLE_SPQLIOS_FMA=ON \
+		-DCMAKE_CXX_FLAGS="-Wno-error=restrict"
+	make -C $(TFHE_BUILD_DIR) -j8
+
 clean:
 	rebar3 clean
+	rm -rf $(TFHE_DIR)
 
 # Add a new target to print the library path
 print-lib-path:

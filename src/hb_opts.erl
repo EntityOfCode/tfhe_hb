@@ -86,7 +86,8 @@ default_message() ->
             #{<<"name">> => <<"structured@1.0">>, <<"module">> => dev_codec_structured},
             #{<<"name">> => <<"test-device@1.0">>, <<"module">> => dev_test},
             #{<<"name">> => <<"wasi@1.0">>, <<"module">> => dev_wasi},
-            #{<<"name">> => <<"wasm-64@1.0">>, <<"module">> => dev_wasm}
+            #{<<"name">> => <<"wasm-64@1.0">>, <<"module">> => dev_wasm},
+			#{<<"name">> => <<"eoc-tfhe@1.0">>, <<"module">> => dev_tfhe_nif}
         ],
         %% Default execution cache control options
         cache_control => [<<"no-cache">>, <<"no-store">>],

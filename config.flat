@@ -1,1 +1,6 @@
-port: 10000
+port: 9999
+priv_key_location: /home/claoo/Projects/HyperBEAM/.wallet/wallet.json
+p4_pricing_device: ~faff@1.0
+p4_ledger_device: ~faff@1.0
+faff_allow_list: "fQIHKnxWpIf7rh1JFGfdxjf9AopwMcBzx3AWu8yQh8g"
+simple_pay_price: 0.01
