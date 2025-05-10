@@ -19,16 +19,15 @@ const MAX_SERIALIZED_SIZE: u64 = 1 << 30; // 1GB
 rustler::init!(
     "dev_tfhe_rs_nif",
     [
-        get_info, 
+        get_info,
         generate_client_key,
         generate_server_key,
         encrypt_integer,
         decrypt_integer,
         add_ciphertexts,
-        subtract_ciphertexts
-        // Commented out functions to be implemented later
-        // encrypt_ascii_string,
-        // decrypt_ascii_string
+        subtract_ciphertexts,
+        encrypt_ascii_string,
+        decrypt_ascii_string
     ],
     load = on_load
 );
@@ -273,70 +272,70 @@ fn subtract_ciphertexts(
     Ok(encoded)
 }
 
-// #[rustler::nif]
-// fn encrypt_ascii_string(
-//     plaintext: String,
-//     client_key_base64: String
-// ) -> Result<String, rustler::Error> {
-//     // Decode and deserialize the client key
-//     let buffer = match general_purpose::STANDARD.decode(&client_key_base64) {
-//         Ok(buffer) => buffer,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode base64: {:?}", e))))
-//     };
-    
-//     let cursor = Cursor::new(&buffer);
-//     let client_key = match safe_deserialize::<ClientKey>(cursor, MAX_SERIALIZED_SIZE) {
-//         Ok(key) => key,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize client key: {:?}", e))))
-//     };
-    
-//     // Encrypt the ASCII string
-//     let encrypted_string = match FheAsciiString::try_encrypt(&plaintext, &client_key) {
-//         Ok(encrypted) => encrypted,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to encrypt ASCII string: {:?}", e))))
-//     };
-    
-//     // Serialize and base64 encode the encrypted string
-//     let mut buffer = Vec::new();
-//     match safe_serialize(&encrypted_string, &mut buffer, MAX_SERIALIZED_SIZE) {
-//         Ok(_) => {},
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to serialize encrypted string: {:?}", e))))
-//     }
-    
-//     let encoded = general_purpose::STANDARD.encode(&buffer);
-//     Ok(encoded)
-// }
+#[rustler::nif]
+fn encrypt_ascii_string(
+    plaintext: String,
+    client_key_base64: String
+) -> Result<String, rustler::Error> {
+    // Decode and deserialize the client key
+    let buffer = match general_purpose::STANDARD.decode(&client_key_base64) {
+        Ok(buffer) => buffer,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode base64: {:?}", e))))
+    };
 
-// #[rustler::nif]
-// fn decrypt_ascii_string(
-//     encrypted_string_base64: String,
-//     client_key_base64: String
-// ) -> Result<String, rustler::Error> {
-//     // Decode and deserialize the client key
-//     let key_buffer = match general_purpose::STANDARD.decode(&client_key_base64) {
-//         Ok(buffer) => buffer,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode client key base64: {:?}", e))))
-//     };
-    
-//     let cursor = Cursor::new(&key_buffer);
-//     let client_key = match safe_deserialize::<ClientKey>(cursor, MAX_SERIALIZED_SIZE) {
-//         Ok(key) => key,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize client key: {:?}", e))))
-//     };
-    
-//     // Decode and deserialize the encrypted string
-//     let encrypted_buffer = match general_purpose::STANDARD.decode(&encrypted_string_base64) {
-//         Ok(buffer) => buffer,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode encrypted string base64: {:?}", e))))
-//     };
-    
-//     let cursor = Cursor::new(&encrypted_buffer);
-//     let encrypted_string = match safe_deserialize::<FheAsciiString>(cursor, MAX_SERIALIZED_SIZE) {
-//         Ok(value) => value,
-//         Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize encrypted string: {:?}", e))))
-//     };
-    
-//     // Decrypt the ASCII string
-//     let decrypted = encrypted_string.decrypt(&client_key);
-//     Ok(decrypted)
-// }
+    let cursor = Cursor::new(&buffer);
+    let client_key = match safe_deserialize::<ClientKey>(cursor, MAX_SERIALIZED_SIZE) {
+        Ok(key) => key,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize client key: {:?}", e))))
+    };
+
+    // Encrypt the ASCII string
+    let encrypted_string = match FheAsciiString::try_encrypt(&plaintext, &client_key) {
+        Ok(encrypted) => encrypted,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to encrypt ASCII string: {:?}", e))))
+    };
+
+    // Serialize and base64 encode the encrypted string
+    let mut buffer = Vec::new();
+    match safe_serialize(&encrypted_string, &mut buffer, MAX_SERIALIZED_SIZE) {
+        Ok(_) => {},
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to serialize encrypted string: {:?}", e))))
+    }
+
+    let encoded = general_purpose::STANDARD.encode(&buffer);
+    Ok(encoded)
+}
+
+#[rustler::nif]
+fn decrypt_ascii_string(
+    encrypted_string_base64: String,
+    client_key_base64: String
+) -> Result<String, rustler::Error> {
+    // Decode and deserialize the client key
+    let key_buffer = match general_purpose::STANDARD.decode(&client_key_base64) {
+        Ok(buffer) => buffer,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode client key base64: {:?}", e))))
+    };
+
+    let cursor = Cursor::new(&key_buffer);
+    let client_key = match safe_deserialize::<ClientKey>(cursor, MAX_SERIALIZED_SIZE) {
+        Ok(key) => key,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize client key: {:?}", e))))
+    };
+
+    // Decode and deserialize the encrypted string
+    let encrypted_buffer = match general_purpose::STANDARD.decode(&encrypted_string_base64) {
+        Ok(buffer) => buffer,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to decode encrypted string base64: {:?}", e))))
+    };
+
+    let cursor = Cursor::new(&encrypted_buffer);
+    let encrypted_string = match safe_deserialize::<FheAsciiString>(cursor, MAX_SERIALIZED_SIZE) {
+        Ok(value) => value,
+        Err(e) => return Err(rustler::Error::Term(Box::new(format!("Failed to deserialize encrypted string: {:?}", e))))
+    };
+
+    // Decrypt the ASCII string
+    let decrypted = encrypted_string.decrypt(&client_key);
+    Ok(decrypted)
+}

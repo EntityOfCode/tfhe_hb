@@ -6,7 +6,9 @@
          encrypt_integer/2, encrypt_integer_http/1,
          decrypt_integer/2, decrypt_integer_http/1,
          add_ciphertexts/3, add_ciphertexts_http/1,
-         subtract_ciphertexts/3, subtract_ciphertexts_http/1]).
+         subtract_ciphertexts/3, subtract_ciphertexts_http/1,
+         encrypt_ascii_string/2, encrypt_ascii_string_http/1,
+         decrypt_ascii_string/2, decrypt_ascii_string_http/1]).
 -include_lib("eunit/include/eunit.hrl").
 -include("include/hb.hrl").
 
@@ -330,6 +332,118 @@ subtract_ciphertexts_http(Msg) ->
             end
     end.
 
+%% @doc Encrypt an ASCII string using a client key.
+%% @param PlainText The string to encrypt.
+%% @param ClientKey The client key.
+%% @returns Binary with the encrypted string.
+encrypt_ascii_string(_PlainText, _ClientKey) ->
+    ?NOT_LOADED.
+
+%% @doc HTTP wrapper for encrypt_ascii_string/2
+%% @param Msg The request message containing the plaintext and client key
+%% @returns {ok, Ciphertext} | {error, Reason}
+encrypt_ascii_string_http(Msg) ->
+    % Check if the Msg contains a body field
+    case maps:is_key(<<"body">>, Msg) of
+        true ->
+            % Parse the body as form data
+            Body = maps:get(<<"body">>, Msg),
+            FormData = cow_qs:parse_qs(Body),
+            
+            % Get the plaintext and client key from the form data
+            case {proplists:get_value(<<"plaintext">>, FormData), 
+                  proplists:get_value(<<"client_key">>, FormData)} of
+                {undefined, _} ->
+                    ErrorMsg = "Error: No plaintext provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {_, undefined} ->
+                    ErrorMsg = "Error: No client key provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {PlainText, ClientKey} ->
+                    % Encrypt the ASCII string
+                    Ciphertext = encrypt_ascii_string(PlainText, ClientKey),
+                    {ok, Ciphertext}
+            end;
+        false ->
+            % Check if the Msg contains the required fields
+            case {maps:is_key(<<"plaintext">>, Msg), maps:is_key(<<"client_key">>, Msg)} of
+                {false, _} ->
+                    ErrorMsg = "Error: No plaintext provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {_, false} ->
+                    ErrorMsg = "Error: No client key provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {true, true} ->
+                    % Get the plaintext and client key from the message
+                    PlainText = maps:get(<<"plaintext">>, Msg),
+                    ClientKey = maps:get(<<"client_key">>, Msg),
+                    
+                    % Encrypt the ASCII string
+                    Ciphertext = encrypt_ascii_string(PlainText, ClientKey),
+                    {ok, Ciphertext}
+            end
+    end.
+
+%% @doc Decrypt an encrypted ASCII string using a client key.
+%% @param Ciphertext The encrypted string.
+%% @param ClientKey The client key.
+%% @returns The decrypted string.
+decrypt_ascii_string(_Ciphertext, _ClientKey) ->
+    ?NOT_LOADED.
+
+%% @doc HTTP wrapper for decrypt_ascii_string/2
+%% @param Msg The request message containing the ciphertext and client key
+%% @returns {ok, DecryptedString} | {error, Reason}
+decrypt_ascii_string_http(Msg) ->
+    % Check if the Msg contains a body field
+    case maps:is_key(<<"body">>, Msg) of
+        true ->
+            % Parse the body as form data
+            Body = maps:get(<<"body">>, Msg),
+            FormData = cow_qs:parse_qs(Body),
+            
+            % Get the ciphertext and client key from the form data
+            case {proplists:get_value(<<"ciphertext">>, FormData), 
+                  proplists:get_value(<<"client_key">>, FormData)} of
+                {undefined, _} ->
+                    ErrorMsg = "Error: No ciphertext provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {_, undefined} ->
+                    ErrorMsg = "Error: No client key provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {Ciphertext, ClientKey} ->
+                    % Decrypt the ASCII string
+                    DecryptedString = decrypt_ascii_string(Ciphertext, ClientKey),
+                    {ok, DecryptedString}
+            end;
+        false ->
+            % Check if the Msg contains the required fields
+            case {maps:is_key(<<"ciphertext">>, Msg), maps:is_key(<<"client_key">>, Msg)} of
+                {false, _} ->
+                    ErrorMsg = "Error: No ciphertext provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {_, false} ->
+                    ErrorMsg = "Error: No client key provided in the request",
+                    io:format("Erlang: ~s~n", [ErrorMsg]),
+                    {error, ErrorMsg};
+                {true, true} ->
+                    % Get the ciphertext and client key from the message
+                    Ciphertext = maps:get(<<"ciphertext">>, Msg),
+                    ClientKey = maps:get(<<"client_key">>, Msg),
+                    
+                    % Decrypt the ASCII string
+                    DecryptedString = decrypt_ascii_string(Ciphertext, ClientKey),
+                    {ok, DecryptedString}
+            end
+    end.
+
 %% @doc Load the NIF library.
 init() ->
     ?load_nif_from_crate(dev_tfhe_rs_nif, 0).
@@ -481,7 +595,66 @@ all_tests_test_() ->
 all_tests_test_impl() ->
     get_info_test(),
     ClientKey = generate_client_key_test(),
-    generate_server_key_test_impl().
+    ServerKey = generate_server_key_test_impl().
+    
+    % Also run the ASCII string encryption/decryption test
+    % Commented out for now as it's not working yet
+    % ascii_string_encryption_test_impl(ClientKey).
+
+%% Test for ASCII string encryption and decryption
+ascii_string_encryption_test_() ->
+    {timeout, 60, fun ascii_string_encryption_test_impl/0}.
+
+ascii_string_encryption_test_impl() ->
+    % Generate a client key
+    ClientKey = generate_client_key(),
+    ascii_string_encryption_test_impl(ClientKey).
+    
+ascii_string_encryption_test_impl(ClientKey) ->
+    % Test strings to encrypt and decrypt
+    TestStrings = [
+        "Hello, TFHE-RS!",
+        "This is a test of ASCII string encryption.",
+        "1234567890!@#$%^&*()",
+        "The quick brown fox jumps over the lazy dog."
+    ],
+    
+    % Test each string
+    lists:foreach(
+        fun(TestString) ->
+            error_logger:info_msg("Testing encryption/decryption of: ~p~n", [TestString]),
+            
+            % Encrypt the string
+            {EncryptTime, EncryptedString} = timer:tc(fun() -> encrypt_ascii_string(TestString, ClientKey) end),
+            
+            % Verify the encrypted string is valid
+            ?assertNotEqual(undefined, EncryptedString),
+            ?assert(is_binary(EncryptedString) orelse is_list(EncryptedString)),
+            
+            % Get encrypted size
+            EncryptedSize = case is_binary(EncryptedString) of
+                true -> byte_size(EncryptedString);
+                false -> length(EncryptedString)
+            end,
+            
+            ?assert(EncryptedSize > 0),
+            error_logger:info_msg("Encrypted string size: ~p bytes~n", [EncryptedSize]),
+            error_logger:info_msg("Encryption time: ~p ms~n", [EncryptTime div 1000]),
+            
+            % Decrypt the string
+            {DecryptTime, DecryptedString} = timer:tc(fun() -> decrypt_ascii_string(EncryptedString, ClientKey) end),
+            
+            % Verify the decryption worked correctly
+            ?assertEqual(TestString, DecryptedString),
+            
+            error_logger:info_msg("Decryption time: ~p ms~n", [DecryptTime div 1000]),
+            error_logger:info_msg("Successfully encrypted and decrypted: ~p~n", [TestString])
+        end,
+        TestStrings
+    ),
+    
+    % Test passes if we get here
+    ?assert(true).
 
 %% Performance test for key generation operations
 %% This test measures the time, memory usage, and CPU load for:

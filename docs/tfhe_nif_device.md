@@ -8,7 +8,8 @@ This guide demonstrates how to implement a Fully Homomorphic Encryption (TFHE) N
 2. [Implementation Steps](#2-implementation-steps)
 3. [Run & Test](#3-run--test)
 4. [Using the TFHE NIF Device](#4-using-the-tfhe-nif-device)
-5. [Conclusion](#5-conclusion)
+5. [Rust TFHE-RS Implementation](#5-rust-tfhe-rs-implementation)
+6. [Conclusion](#6-conclusion)
 
 ## 1. Introduction to TFHE and NIFs
 
@@ -173,8 +174,80 @@ curl http://localhost:8734/~eoc-tfhe@1.0/get_info_http
 curl http://localhost:8734/~eoc-tfhe@1.0/generate_secret_key_http
 ```
 
-## 5. Conclusion
+## 5. Rust TFHE-RS Implementation
 
-This guide demonstrated how to implement a TFHE NIF device in HyperBEAM, enabling homomorphic encryption operations directly within the Erlang runtime. The implementation showcases HyperBEAM's capabilities for integrating native code through NIFs and exposing functionality through HTTP endpoints.
+In addition to the C++ implementation, we've also developed a Rust-based implementation of the TFHE NIF device using the TFHE-RS library.
 
-All source code for this implementation is available in the [EntityOfCode/tfhe_hb](https://github.com/EntityOfCode/tfhe_hb) repository.
+### 5.1 Setting Up the Rust Implementation
+
+We created a new directory structure for the Rust implementation:
+
+```bash
+mkdir -p native/dev_tfhe_rs_nif
+cd native/dev_tfhe_rs_nif
+cargo init --lib
+```
+
+The Rust implementation is defined in `native/dev_tfhe_rs_nif/src/lib.rs` and uses:
+- The TFHE-RS crate for homomorphic encryption
+- Rustler for Erlang NIF bindings
+
+### 5.2 Creating the Erlang Interface Module
+
+We created `src/dev_tfhe_rs_nif.erl` to interface with the Rust implementation:
+
+```erlang
+-module(dev_tfhe_rs_nif).
+-export([info/1, compute/3, init/3, terminate/3, restore/3, snapshot/3]).
+-export([get_info/0, get_info_http/1, 
+         generate_client_key/0, generate_client_key_http/1,
+         generate_server_key/1, generate_server_key_http/1,
+         encrypt_integer/2, encrypt_integer_http/1,
+         decrypt_integer/2, decrypt_integer_http/1,
+         add_ciphertexts/3, add_ciphertexts_http/1,
+         subtract_ciphertexts/3, subtract_ciphertexts_http/1,
+         encrypt_ascii_string/2, encrypt_ascii_string_http/1,
+         decrypt_ascii_string/2, decrypt_ascii_string_http/1]).
+```
+
+### 5.3 Implementation Features
+
+The Rust implementation provides the same core functionality as the C++ version but with some naming differences:
+- `generate_client_key` (instead of `generate_secret_key`)
+- `generate_server_key` (instead of `generate_public_key`)
+
+Currently implemented features:
+- Information retrieval about the TFHE-RS library
+- Client key generation (equivalent to secret key)
+- Server key generation (equivalent to public key)
+- Integer encryption and decryption
+- Homomorphic addition and subtraction operations
+- ASCII string encryption and decryption (implementation in progress)
+
+### 5.4 Integration with HyperBEAM
+
+Like the C++ implementation, the Rust version is integrated with HyperBEAM's build system and device registry. The main differences are:
+- Cargo is used for building instead of Make
+- Rustler handles the NIF binding instead of manual C++ binding
+
+### 5.5 Testing
+
+The Rust implementation includes comprehensive EUnit tests that verify:
+- Library information retrieval
+- Client key generation
+- Server key generation
+- Integer operations
+- Performance metrics for key generation
+
+The tests also measure and report on:
+- Key generation time
+- Key sizes
+- File I/O performance
+
+## 6. Conclusion
+
+This guide demonstrated how to implement a TFHE NIF device in HyperBEAM, enabling homomorphic encryption operations directly within the Erlang runtime. We've shown both C++ and Rust implementations, showcasing HyperBEAM's flexibility for integrating native code through NIFs and exposing functionality through HTTP endpoints.
+
+The Rust implementation (TFHE-RS) offers a modern alternative with strong safety guarantees while maintaining performance. Both implementations provide similar functionality, allowing developers to choose based on their preference or specific requirements.
+
+All source code for these implementations is available in the [EntityOfCode/tfhe_hb](https://github.com/EntityOfCode/tfhe_hb) repository.

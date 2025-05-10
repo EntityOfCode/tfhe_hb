@@ -414,73 +414,67 @@ def subtract_ciphertexts(ciphertext1, ciphertext2, server_key):
     else:
         raise Exception(f"Failed to subtract ciphertexts: {response.status_code} - {response.text}")
 
-# def encrypt_ascii_string(plaintext, msg_length, client_key):
-#     """Encrypt an ASCII string."""
-#     endpoint = f"{DEVICE_PATH}/encrypt_ascii_string_http"
+def encrypt_ascii_string(plaintext, client_key):
+    """Encrypt an ASCII string."""
+    endpoint = f"{DEVICE_PATH}/encrypt_ascii_string_http"
     
-#     # Convert client key to base64 if it's bytes
-#     if isinstance(client_key, bytes):
-#         client_key = base64.b64encode(client_key).decode('utf-8')
+    print_info(f"Encrypting ASCII string: '{plaintext}'")
     
-#     # Send the plaintext, message length, and client key as form data
-#     form_data = {
-#         "plaintext": plaintext,
-#         "msg_length": str(msg_length),
-#         "client_key": client_key
-#     }
+    # Make a POST request with the plaintext and client key as form data
+    form_data = {
+        "plaintext": plaintext,
+        "client_key": client_key
+    }
     
-#     # Use direct requests.post with form data
-#     url = f"{BASE_URL}{endpoint}"
-#     try:
-#         response = requests.post(url, data=form_data)
-#     except requests.exceptions.RequestException as e:
-#         print_error(f"Request failed: {e}")
-#         return None
+    # Use direct requests.post with form data
+    url = f"{BASE_URL}{endpoint}"
+    try:
+        response = requests.post(url, data=form_data)
+    except requests.exceptions.RequestException as e:
+        print_error(f"Request failed: {e}")
+        return None
     
-#     if response is None:
-#         raise Exception("No response received")
+    if response is None:
+        raise Exception("No response received")
     
-#     if response.status_code == 200:
-#         # Return the response content as bytes
-#         return response.content
-#     else:
-#         raise Exception(f"Failed to encrypt ASCII string: {response.status_code} - {response.text}")
+    if response.status_code == 200:
+        # Return the response content (encrypted string)
+        encrypted_string = response.content
+        print_info(f"Encryption successful, ciphertext size: {len(encrypted_string)} bytes")
+        return encrypted_string
+    else:
+        raise Exception(f"Failed to encrypt ASCII string: {response.status_code} - {response.text}")
 
-# def decrypt_ascii_string(ciphertext, msg_length, client_key):
-#     """Decrypt an encrypted ASCII string."""
-#     endpoint = f"{DEVICE_PATH}/decrypt_ascii_string_http"
+def decrypt_ascii_string(ciphertext, client_key):
+    """Decrypt an encrypted ASCII string."""
+    endpoint = f"{DEVICE_PATH}/decrypt_ascii_string_http"
     
-#     # Convert client key to base64 if it's bytes
-#     if isinstance(client_key, bytes):
-#         client_key = base64.b64encode(client_key).decode('utf-8')
+    print_info(f"Decrypting ASCII string ciphertext (size: {len(ciphertext)} bytes)")
     
-#     # Convert ciphertext to base64 if it's bytes
-#     if isinstance(ciphertext, bytes):
-#         ciphertext = base64.b64encode(ciphertext).decode('utf-8')
+    # Make a POST request with the ciphertext and client key as form data
+    form_data = {
+        "ciphertext": ciphertext,
+        "client_key": client_key
+    }
     
-#     # Send the ciphertext, message length, and client key as form data
-#     form_data = {
-#         "ciphertext": ciphertext,
-#         "msg_length": str(msg_length),
-#         "client_key": client_key
-#     }
+    # Use direct requests.post with form data
+    url = f"{BASE_URL}{endpoint}"
+    try:
+        response = requests.post(url, data=form_data)
+    except requests.exceptions.RequestException as e:
+        print_error(f"Request failed: {e}")
+        return None
     
-#     # Use direct requests.post with form data
-#     url = f"{BASE_URL}{endpoint}"
-#     try:
-#         response = requests.post(url, data=form_data)
-#     except requests.exceptions.RequestException as e:
-#         print_error(f"Request failed: {e}")
-#         return None
+    if response is None:
+        raise Exception("No response received")
     
-#     if response is None:
-#         raise Exception("No response received")
-    
-#     if response.status_code == 200:
-#         # Return the decrypted string
-#         return response.text
-#     else:
-#         raise Exception(f"Failed to decrypt ASCII string: {response.status_code} - {response.text}")
+    if response.status_code == 200:
+        # Return the decrypted string
+        decrypted_text = response.text
+        print_info(f"Decryption successful: '{decrypted_text}'")
+        return decrypted_text
+    else:
+        raise Exception(f"Failed to decrypt ASCII string: {response.status_code} - {response.text}")
 
 # def run_info_and_key_gen():
 #     """Run the get_info part and key generation with progress tracking."""
@@ -685,5 +679,65 @@ def run_homomorphic_operations_test():
     
     return 0
 
+def run_ascii_string_test():
+    """Run a test for encrypting and decrypting ASCII strings."""
+    try:
+        print_header("TFHE-RS NIF HTTP Client - ASCII String Test")
+        
+        # Get TFHE-RS library information
+        print_info("\nGetting TFHE-RS library information...")
+        info = get_info()
+        print_info(f"TFHE-RS Info: {info}")
+        
+        # Generate a client key
+        print_info("\nGenerating client key...")
+        client_key = generate_client_key()
+        client_key_size = len(client_key) / 1024
+        print_info(f"Client key generated, size: {client_key_size:.2f} KB")
+        
+        # Test encrypting and decrypting ASCII strings
+        test_strings = [
+            "Hello, TFHE-RS!",
+            "This is a test of ASCII string encryption.",
+            "1234567890!@#$%^&*()",
+            "The quick brown fox jumps over the lazy dog."
+        ]
+        
+        all_passed = True
+        for idx, test_string in enumerate(test_strings, 1):
+            print_info(f"\nTest {idx}: Encrypting string: '{test_string}'")
+            
+            # Encrypt the string
+            encrypted_string = encrypt_ascii_string(test_string, client_key)
+            
+            if encrypted_string is not None:
+                # Decrypt the string
+                print_info("Decrypting the string...")
+                decrypted_string = decrypt_ascii_string(encrypted_string, client_key)
+                
+                if decrypted_string == test_string:
+                    print_success(f"Test {idx} successful! Original: '{test_string}', Decrypted: '{decrypted_string}'")
+                else:
+                    print_error(f"Test {idx} failed! Original: '{test_string}', Decrypted: '{decrypted_string}'")
+                    all_passed = False
+            else:
+                print_error(f"Test {idx} failed! Could not encrypt the string.")
+                all_passed = False
+        
+        if all_passed:
+            print_success("\nAll ASCII string tests passed successfully!")
+        else:
+            print_error("\nSome ASCII string tests failed!")
+        
+        print_success("\nASCII string test completed!")
+        
+    except Exception as e:
+        print_error(f"Error: {str(e)}")
+        return 1
+    
+    return 0
+
 if __name__ == "__main__":
-    sys.exit(run_homomorphic_operations_test())
+    # Uncomment one of the following lines to run the desired test
+    # sys.exit(run_homomorphic_operations_test())
+    sys.exit(run_ascii_string_test())
