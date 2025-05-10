@@ -1,307 +1,120 @@
 ![hyperbeam_logo-thin-3](https://github.com/user-attachments/assets/fcca891c-137e-4022-beff-360eb2a0d05e)
 
-This repository contains a reference implementation of AO-Core, along with an
-Erlang-based (BEAM) client implementing a number of devices for the protocol.
+# HyperBEAM with TFHE-RS Integration
 
-AO-Core is a protocol built to enable decentralized computations, offering a
-series of universal primitives to achieve this end. Instead of enforcing a single,
-monolithic architecture, AO-Core provides a framework into which any number of
-different computational models, encapsulated as primitive `devices`, can be attached.
+This branch (`zama-tfhe-rs`) integrates [Zama's TFHE-RS library](https://github.com/zama-ai/tfhe-rs) into HyperBEAM, providing Fully Homomorphic Encryption (FHE) capabilities through the `~dev-tfhe-rs@1.0` device.
 
-AO-Core's protocol offers a framework for decentralized computations, built upon the
-following fundamental primitives:
+## About TFHE-RS
 
-1. Hashpaths: A mechanism for referencing locations in a program's state-space
-prior to execution. These state-space `links` are represented as Merklized lists of
-programs inputs and initial states.
-2. A unified data structure for representing program states as HTTP documents,
-as described in the [HTTP Semantics RFC](https://www.rfc-editor.org/rfc/rfc9110.html).
-3. A unified protocol for expressing `commitments` of the `states` found at
-particular `hashpaths`. These commitments allow nodes to participate in varied
-economic and cryptographic mechanisms to prove and challenge each-other's
-representations regarding the programs that operate inside the AO-Core protocol.
-4. A meta-VM that allows any number of different virtual machines and computational
-models (`devices`) to be executed inside the AO-Core protocol, while enabling their
-states and inputs to be calculated and committed to in a unified format.
+TFHE-RS is a pure Rust implementation of TFHE for boolean and integer arithmetics over encrypted data. It enables computation on encrypted data without requiring access to the plaintext or decryption keys.
 
-## What is HyperBeam?
+Key features of TFHE-RS:
+- Low-level cryptographic library that implements Zama's variant of TFHE, including programmable bootstrapping
+- Implementation of the original TFHE boolean API
+- Short integer API enabling exact, unbounded FHE integer arithmetics
+- Size-efficient public key encryption
+- Ciphertext and server key compression for efficient data transfer
 
-HyperBeam is a client implementation of the AO-Core protocol, written in Erlang.
-It can be seen as the 'node' software for the decentralized operating system that
-AO enables; abstracting hardware provisioning and details from the execution of
-individual programs.
+## HyperBEAM Integration
 
-HyperBEAM node operators can offer the services of their machine to others inside
-the network by electing to execute any number of different `devices`, charging 
-users for their computation as necessary.
+We've integrated TFHE-RS into HyperBEAM through a Rust NIF (Native Implemented Function) that provides the following capabilities:
 
-Each HyperBEAM node is configured using the `~meta@1.0` device, which provides
-an interface for specifying the node's hardware, supported devices, metering and
-payments information, amongst other configuration options.
+### Exposed Functions
+
+The `~dev-tfhe-rs@1.0` device exposes these functions via HTTP endpoints:
+
+- `get_info_http`: Retrieves version and configuration information about the TFHE-RS integration
+- `generate_client_key_http`: Generates a new client key (equivalent to private key)
+- `generate_server_key_http`: Generates a server key from a client key for homomorphic operations
+- `encrypt_integer_http`: Encrypts a 32-bit unsigned integer using a client key
+- `decrypt_integer_http`: Decrypts an encrypted integer using a client key
+- `add_ciphertexts_http`: Performs homomorphic addition on two encrypted integers
+- `subtract_ciphertexts_http`: Performs homomorphic subtraction on two encrypted integers
+
+Future additions planned:
+- ASCII string encryption/decryption
+- More homomorphic operations (multiplication, division, etc.)
+- Support for advanced FHE operations
 
 ## Getting Started
 
-To begin using HyperBeam, you will need to install:
+### Prerequisites
 
-- The Erlang runtime (OTP 27)
+To build and run HyperBEAM with TFHE-RS support, you need:
+
+- Erlang OTP 27
 - Rebar3
-- Git
-- Docker (optional, for containerized deployment)
+- Rust compiler (version >= 1.84)
+- Cargo build tools
 
-You will also need:
-- A wallet and it's keyfile *(generate a new wallet and keyfile with https://www.wander.app)*
+### Building and Running
 
-Then you can clone the HyperBEAM source and build it:
+1. Clone the repository and checkout this branch:
+   ```bash
+   git clone https://github.com/permaweb/HyperBEAM.git
+   cd HyperBEAM
+   git checkout zama-tfhe-rs
+   ```
 
-```bash
-git clone https://github.com/permaweb/HyperBEAM.git
-cd HyperBEAM
-rebar3 compile
-```
+2. Build the project:
+   ```bash
+   rebar3 compile
+   ```
 
-If you would prefer to execute HyperBEAM in a containerized environment, you
-can use the provided Dockerfile to build a container image.
+3. Launch the HyperBEAM shell with the mainnet configuration:
+   ```bash
+   rebar3 shell --eval "hb:start_mainnet(#{
+     port => 9696
+   })."
+   ```
 
-```bash
-docker build -t hyperbeam .
-```
+This starts HyperBEAM with the TFHE-RS device available on port 9696.
 
-If you intend to offer TEE-based computation of AO-Core devices, please see the
-[`HyperBEAM OS`](https://github.com/permaweb/hb-os) repo for details on configuration and deployment.
+### Testing
 
-## Running HyperBEAM
-
-Once the code is compiled, you can start HyperBEAM with:
-
-```bash
-# Start with default configuration
-rebar3 shell
-```
-
-The default configuration uses settings from `hb_opts.erl`, which preloads 
-all devices and sets up default stores on port 10000.
-
-### Optional Build Profiles
-
-HyperBEAM supports several optional build profiles that enable additional features:
-
-- `genesis_wasm`: Enables Genesis WebAssembly support
-- `rocksdb`: Enables RocksDB storage backend (adds RocksDB v1.8.0 dependency)
-- `http3`: Enables HTTP/3 support via QUIC protocol
-
-
-Using these profiles allows you to optimize HyperBEAM for your specific use case without adding unnecessary dependencies to the base installation.
-
-To start a shell with profiles:
+You can run the unit tests for the TFHE-RS integration with:
 
 ```bash
-# Single profile
-rebar3 as rocksdb shell
-
-# Multiple profiles
-rebar3 as rocksdb,genesis_wasm shell
+rebar3 eunit --module=dev_tfhe_rs_nif_tests
 ```
 
-To create a release with profiles:
+## Python Client Example
 
-```bash
-# Create release with profiles
-rebar3 as rocksdb,genesis_wasm release
-```
+The repository includes a Python client script for testing and demonstrating the TFHE-RS integration.
 
-Note: Profiles modify compile-time options that get baked into the release. Choose the profiles you need before starting HyperBEAM.
+Location: `test/eoc_tfhe/python/tfhe_rs_client.py`
 
-### Verify Installation
+This script demonstrates:
+- Connecting to the HyperBEAM node
+- Generating encryption keys
+- Encrypting and decrypting integers
+- Performing homomorphic operations (addition, subtraction) on encrypted data
 
-To verify that your HyperBEAM node is running correctly, check:
+### Using the Python Client
 
-```bash
-curl http://localhost:10000/~meta@1.0/info
-```
+1. Ensure HyperBEAM is running with port 9696 exposed
+2. Run the Python script:
+   ```bash
+   python3 test/eoc_tfhe/python/tfhe_rs_client.py
+   ```
 
-If you receive a response with node information, your HyperBEAM
-installation is working properly.
+The script will:
+1. Connect to the HyperBEAM node
+2. Generate client and server keys
+3. Encrypt test values
+4. Perform homomorphic operations
+5. Decrypt and validate results
 
-## Configuration
+## Security Considerations
 
-HyperBEAM can be configured using a `~meta@1.0` device, which is initialized
- using either command line arguments or a configuration file.
+This integration uses the default security parameters provided by TFHE-RS, which are designed for the IND-CPA security model with a bootstrapping failure probability of 2^-64. For production use, ensure these parameters meet your security requirements.
 
-### Configuration with `config.flat`
+## References
 
-The simplest way to configure HyperBEAM is using the `config.flat` file:
-
-1. A file named `config.flat` is already included in the project directory
-2. Update to include your configuration values:
-
-```
-port: 10000
-priv_key_location: /path/to/wallet.json
-```
-
-3. Start HyperBEAM with `rebar3 shell`
-
-HyperBEAM will automatically load your configuration and display the active
-settings in the startup log.
-
-### Creating a Release
-
-For production environments, you can create a standalone release:
-
-```bash
-rebar3 release
-```
-
-This creates a release in `_build/default/rel/hb` that can be deployed independently.
-
-### Runtime Configuration Changes
-
-Additionally, if you would like to modify a running node's configuration, you can
- do so by sending a HTTP Signed Message using any RFC-9421 compatible client
-  in the following form:
-
-```
-POST /~meta@1.0/info
-Your-Config-Tag: Your-Config-Tag
-```
-
-The individual headers provided in the message will each be interpreted as additional
-configuration options for the node.
-
-## Messages
-
-HyperBEAM describes every piece of data as a `message`, which can be interpreted as
-a binary term or as collection of named functions aka. a `Map` of functions.
-
-Every message _may_ specify a `device` which is interpreted by the AO-Core compatible
-system in order to operate upon the message's contents, which to say read it, or
-execute it. Executing a named function within a message, providing a map of arguments,
-results in another `message`.
-
-In this way, `messages` in AO-Core always _beget_ further `messages`, giving rise 
-to a vast computational space, leveraging function application and composition at its core.
-For those familiar with the concept, this programming model is similar to that 
-described by traditional `combinator` systems.
-
-> Notably, this computation does not require the computor of a message
-> to know the values of all the keys contained therin. In other words, keys
-> may be _lazily_ evaluated, and only by computors that are interested
-> in their outputs, or even _sharded_ across arbitrary sets of nodes, as necessary
-
-If a `message` does not explicitly specify a `device`, its implied `device` is a
- `message@1.0`, which simply returns the binary or `message` at a given named function.
-
-## Devices
-
-HyperBeam supports a number of different devices, each of which enable different
-services to be offered by the node. There are presently 25 different devices
-included in the `preloaded_devices` of a HyperBEAM node, although it is possible
-to add and remove devices as necessary.
-
-### Preloaded Devices
-
-The following devices are included in the `preloaded_devices` of a HyperBEAM node:
-
-- `~meta@1.0`: The `~meta@1.0` device is used to configure the node's hardware,
-supported devices, metering and payments information, amongst other configuration options.
-Additionally, this device allows external clients to find and validate the configuration
-of nodes in the network.
-
-- `~relay@1.0`: The `~relay@1.0` device is used to relay messages between nodes
-and the wider HTTP network. It offers an interface for sending and receiving messages
-to and from nodes in the network, using a variety of execution strategies.
-
-- `~wasm64@1.0`: The `~wasm64@1.0` device is used to execute WebAssembly code, using
-the [Web Assembly Micro-Runtime (WAMR)](https://github.com/bytecodealliance/wasm-micro-runtime)
-under-the-hood. WASM modules can be called from any other device, and can also be
-used to execute `devices` written in languages such as Rust, C, and C++.
-
-- `~json-iface@1.0`: The `~json-iface@1.0` device offers a translation layer between
-the JSON-encoded message format used by AOS 2.0 and prior versions, to HyperBEAM's
-native HTTP message format.
-
-- `~compute-lite@1.0`: The `~compute-lite@1.0` device is a lightweight device wrapping
-a local WASM executor, used for executing legacynet AO processes inside HyperBEAM.
-See the [HyperBEAM OS](https://github.com/permaweb/hb-os) repository for an 
-example setup with co-executing HyperBEAM and legacy-CU nodes.
-
-- `~snp@1.0`: The `~snp@1.0` device is used to generate and validate proofs that 
-the local node, or another node in the network, is executing inside a [Trusted Execution
-Environment (TEE)](https://en.wikipedia.org/wiki/Trusted_execution_environment).
-Nodes executing inside these environments use an ephemeral key pair, provably
-only existing inside the TEE, and can be signed commitments of AO-Core executions
-in a trust-minimized way.
-
-- `p4@1.0`: The `p4@1.0` device runs as a `pre-processor` and `post-processor` in
-the framework provided by `~meta@1.0`, enabling a framework for node operators to
-sell usage of their machine's hardware to execute AO-Core devices. The `p4@1.0`
-framework offers two additional hooks, allowing node operators flexibility in how
-their hardware is offered: A `pricing` device, and a `ledger` device.
-
-- `~simple-pay@1.0`: Implements a simple, flexible pricing device that can be used
-in conjunction with `p4@1.0` to offer flat-fees for the execution of AO-Core messages.
-
-- `~faff@1.0`: A simple pricing (and ledger) device for `p4@1.0`, allowing nodes
-to offer access to their services only to a specific set of users. This device is
-useful if you intend to operate your node onmly for personal use, or for a specific
-subset of users (servicing an individual app, for example).
-
-- `scheduler@1.0`: The `scheduler@1.0` device is used to assign a linear hashpath
-to an execution, such that all users may access it with a deterministic ordering.
-When used in conjunction with other AO-Core devices, this allows for the creation
-of executions that mirror the behaviour of traditional smart contracting networks.
-
-- `stack@1.0`: The `stack@1.0` device is used to execute an ordered set of devices,
-over the same inputs. This device allows its users to create complex combinations of
-other devices and apply them as a single unit, with a single hashpath.
-
-- `~process@1.0`: Processes enable users to create persistent, shared executions
-that can be accessed by any number of users, each of whom may add additional inputs
-to its hashpath. The `~process@1.0` allows users to customize the `execution` and
-`scheduler` devices that they choose for their process, such that a variety of different
-execution patterns can be created. In addition, the `~process@1.0` device offers a
-`push` key, which moves messages from a process's execution `outbox` into the
-schedule of another execution.
-
-Details on other devices found in the pre-loaded set can be located in their 
-respective documentation.
+- [TFHE-RS Repository](https://github.com/zama-ai/tfhe-rs)
+- [TFHE-RS Documentation](https://docs.zama.ai/tfhe-rs)
+- [TFHE-RS Handbook](https://github.com/zama-ai/tfhe-rs-handbook/blob/main/tfhe-rs-handbook.pdf)
 
 ## Contributing
 
-HyperBEAM is developed as an open source implementation of the AO-Core protocol 
-by [Forward Research](https://fwd.arweave.net). Pull Requests are always welcome!
-
-To get started building on HyperBEAM, check out the [hacking on HyperBEAM](./docs/contribute/setup.md)
-guide.
-
-## Documentation
-
-HyperBEAM uses [MkDocs](https://www.mkdocs.org/) with the [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) theme to build its documentation site.
-
-Building the documentation requires Python 3, pip, and the following packages:
-```bash
-pip3 install mkdocs mkdocs-material
-```
-
-- **Source Files:** All documentation source files (Markdown `.md`, images, CSS) are located in the `docs/` directory.
-- **Source Code Docs:** Erlang source code documentation is generated using `rebar3 edoc` (with the `edown_doclet` plugin) into the `docs/source-code-docs/` directory as Markdown files. These are then incorporated into the main MkDocs site.
-- **Build Script:** The entire process (compiling, generating edoc, processing source docs, building the site) is handled by the `./docs/build-all.sh` script.
-
-To build and view the documentation locally:
-
-1.  Ensure you are in the project root directory.
-2.  Run the build script:
-    ```bash
-    ./docs/build-all.sh
-    ```
-
-This script performs the following steps:
-- Compiles the Erlang project (`rebar3 compile`).
-- Generates Markdown documentation from source code comments (`rebar3 edoc`) into `docs/source-code-docs/`.
-- Processes the generated source code Markdown files (updates index, cleans up TOCs).
-- Builds the MkDocs site into the `dist/mkdocs` directory (`mkdocs build`).
-- Starts a local development server (`mkdocs serve`) to view the site at `http://127.0.0.1:8000/`.
-
-Press `Ctrl+C` in the terminal where the script is running to stop the local server.
-
-The final static site is generated in the `dist/mkdocs` directory, as configured in `mkdocs.yml` (`site_dir: dist/mkdocs`).
+Contributions to improve the TFHE-RS integration are welcome. Please follow the standard HyperBEAM contribution guidelines.
